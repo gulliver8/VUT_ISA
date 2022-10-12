@@ -11,24 +11,10 @@
  * @brief
  */
 
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
-#include <unistd.h>
 
-#include <getopt.h>
-#include <bitset>
-#include <csignal>
-#include <pcap.h>
-#include <string>
+#include "netflow.h"
 
-//packet structure libraries
-#include <arpa/inet.h>
-#include <netinet/ether.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
-#include <netinet/ip_icmp.h>
-#include <iostream>
+
 
 using namespace std;
 
