@@ -19,5 +19,6 @@
 using namespace std;
 
 int main(int argc, char **argv) {
-    printf("Hello");
+    struct Options options = {60,10,1024,"127.0.0.1:2055",""};
+    printf("Hello %s", options.hostname);
 }

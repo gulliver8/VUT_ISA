@@ -21,13 +21,13 @@
 #include <unistd.h>
 #include <time.h>
 using namespace std;
-typedef struct{
+struct Options{
     int a_timer;    //active timer value
     int i_timer;    //inactive timer value
     int count;      //number of  flows in memory
     char *hostname; //hostname and optional port
     char *source;   //source file
-}Options;
+};
 
 void get_options(int argc, char *argv[],Options *options);        //process command line arguments
 
