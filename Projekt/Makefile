@@ -1,8 +1,10 @@
 CC=g++
-CFLAGS=-I
+CFLAGS=-I.
 
-isa-netflow: isa-netflow.o
-	$(CC) -o isa-netflow isa-netflow.o -lpcap
+all: netflow
+
+netflow: netflow.o
+	$(CC) -o netflow netflow.o -lpcap
 
 clean:
-	rm *.o isa-netflow
+	rm *.o netflow
