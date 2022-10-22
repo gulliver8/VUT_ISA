@@ -1,10 +1,11 @@
 CC=g++
 CFLAGS=-I.
+FILES= flow.cpp arguments.cpp netflow_generator.cpp
 
-all: netflow
+all: flow
 
-netflow: netflow.o
-	$(CC) -o netflow netflow.o -lpcap
+flow: $(FILES)
+	$(CC) $(CFLAGS) -o flow $(FILES) -lpcap
 
 clean:
-	rm *.o netflow
+	rm *.o flow

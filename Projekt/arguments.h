@@ -1,6 +1,6 @@
 //======== Copyright (c) 2022, FIT VUT Brno, All rights reserved. ============//
 //
-// $NoKeywords: $netflow $arguments.h
+// $NoKeywords: $flow $arguments.h
 // $Author:     Lucia Makaiová <xmakai00@stud.fit.vutbr.cz>
 // $Date:       $2022-10-12
 //============================================================================//
@@ -19,16 +19,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
-#include <time.h>
+#include <string>
 using namespace std;
 struct Options{
     int a_timer;    //active timer value
     int i_timer;    //inactive timer value
     int count;      //number of  flows in memory
-    char *hostname; //hostname and optional port
-    char *source;   //source file
+    string hostname; //hostname and optional port
+    string source;   //source file
 };
 
-void get_options(int argc, char *argv[],Options *options);        //process command line arguments
+void get_options(int argc, char *argv[],Options *);        //process command line arguments
 
 #endif //PROJEKT_ARGUMENTS_H
