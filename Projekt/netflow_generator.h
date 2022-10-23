@@ -57,19 +57,7 @@ struct Netflow_base{
     uint16_t dstport;	    //TCP/UDP destination port number or equivalen
     uint8_t prot;	        //IP protocol type (for example, TCP = 6; UDP = 17
     bool operator<(const Netflow_base& other) const{
-        if (srcaddr < other.srcaddr) {
-            return  true;
-        }
-        if (dstaddr < other.dstaddr) {
-            return  true;
-        }
-        if (srcport < other.srcport) {
-            return  true;
-        }
-        if (dstport < other.dstport) {
-            return  true;
-        }
-        if (prot < other.prot) {
+        if (srcaddr + dstaddr + srcport + dstport + prot < other.srcaddr + other.dstaddr + other.srcport +other.dstport + other.prot) {
             return  true;
         }
         return false;
