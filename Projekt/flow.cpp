@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
     uint32_t boot_time;
     uint32_t current_time;
 
+
     for(packet = pcap_next(session, &packet_header);packet != NULL; packet = pcap_next(session, &packet_header),i++){
         Netflow_base netflow = {};
         Netflow netflow_data = {};
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
             netflow.prot = arp_packet->ea_hdr.ar_pro;
             //printf("src IP: %d.%d.%d.%d\n", arp_packet->arp_spa[0], arp_packet->arp_spa[1], arp_packet->arp_spa[2],arp_packet->arp_spa[3]);
             //printf("dst IP: %d.%d.%d.%d\n", arp_packet->arp_tpa[0], arp_packet->arp_tpa[1], arp_packet->arp_tpa[2],arp_packet->arp_tpa[3]);
-
+            printf("TAKETO");
         }else if(ntohs(ether_packet->ether_type) == IPV4){
             ipv4_packet = (struct ip *) packet;
             netflow.srcaddr = ipv4_packet->ip_src.s_addr;
@@ -121,6 +122,8 @@ int main(int argc, char **argv) {
             protocol = ipv4_packet->ip_p;
             netflow.prot = ipv4_packet->ip_p;
             printf("%u", protocol);
+            netflow_data.dOctets = ipv4_packet->ip_hl;
+            netflow_data.IP = ipv4_packet->ip_tos;
             packet = packet + 4 * ipv4_packet->ip_hl;
         }else{
             ////TODO: ipv6 packets suipport or not?
@@ -152,25 +155,33 @@ int main(int argc, char **argv) {
         auto it = netflowMap.find(netflow);
         if(it !=netflowMap.end()){
             it->second.Last = current_time;
+            it->second.dPkts += 1;
+            it->second.dOctets += netflow_data.dOctets;
         }else{
             netflow_data.srcaddr = netflow.srcaddr;
             netflow_data.dstaddr = netflow.dstaddr;
             netflow_data.dstport = netflow.dstport;
-            netflow_data.dstport = netflow.dstport;
+            netflow_data.srcport = netflow.srcport;
             netflow_data.prot = netflow.prot;
             netflow_data.First = current_time;
             netflow_data.Last = current_time;
+            netflow_data.dPkts = 1;
+
+
             netflowMap[netflow] = netflow_data; //for the first
         }
     }
     print_netflow();
     pcap_close(session);
     //TODO:convert hostname to host
-    //TODO: stdin empty -program doesnt end
-    //TODO:help
+    //TODO: cummulative or of tcp flags
     //TODO:hostname validity check
-    //TODO:file validity check
     //TODO:numbers validity check, possible?
+    //TODO:stdin empty -program doesnt end, problem??
+    //TODO:file validity check
+    //TODO: check active flows to export
+    //TODO: check inactive flows to export
+    //TODO: udp client for export
 
 }
 
