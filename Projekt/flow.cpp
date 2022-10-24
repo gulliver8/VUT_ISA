@@ -36,7 +36,9 @@ tuple<uint32_t,uint32_t,uint16_t,uint16_t,uint8_t>netflow_base;
 
 map<Netflow_base, Netflow> netflowMap;
 
-void print_netflow();
+void export_all();
+void check_timers(int atimer, int iatimer, uint32_t current);
+void export_flow(Netflow_base netflow);
 
 int main(int argc, char **argv) {
     char err_buf[PCAP_ERRBUF_SIZE]; //control buffer for pcap functions
@@ -121,7 +123,6 @@ int main(int argc, char **argv) {
             //printf("dst IP: %s\n", inet_ntoa(ipv4_packet->ip_dst));
             protocol = ipv4_packet->ip_p;
             netflow.prot = ipv4_packet->ip_p;
-            printf("%u", protocol);
             netflow_data.dOctets = ipv4_packet->ip_hl;
             netflow_data.IP = ipv4_packet->ip_tos;
             packet = packet + 4 * ipv4_packet->ip_hl;
@@ -152,6 +153,10 @@ int main(int argc, char **argv) {
                 //printf("dst port: %hu\n", htons(tcp_packet->th_dport));
             }
         }
+
+        //printf("timers %i %i and %u",options.a_timer*1000,options.i_timer*1000, current_time);
+        check_timers(options.a_timer*1000,options.i_timer*1000, current_time);
+
         auto it = netflowMap.find(netflow);
         if(it !=netflowMap.end()){
             it->second.Last = current_time;
@@ -167,11 +172,10 @@ int main(int argc, char **argv) {
             netflow_data.Last = current_time;
             netflow_data.dPkts = 1;
 
-
             netflowMap[netflow] = netflow_data; //for the first
         }
     }
-    print_netflow();
+    export_all();
     pcap_close(session);
     //TODO:convert hostname to host
     //TODO: cummulative or of tcp flags
@@ -185,15 +189,50 @@ int main(int argc, char **argv) {
 
 }
 
-void print_netflow(){
-    for(auto it = netflowMap.cbegin(); it != netflowMap.cend(); ++it)
+void export_all(){
+    cout<<"SRC_ADDR\tDST_ADDR\tNEXTHOP\tIN\tOUT\tPKTS\tOCTETS\tFIRST\tLAST\tSRC_P\tDST_P\tPAD\tTCP\tPROT\tTOS\tSRC_AS\tDST_AS\tSRC_M\tDST_M\tPAD\n";
+    for(auto it = netflowMap.cbegin(); it != netflowMap.cend(); )
     {
-        cout << it->first.srcaddr <<"\t"<< it->first.dstaddr <<"\t"<<it->first.srcport <<"\t"<<it->first.dstport <<"\t"
-        <<unsigned(it->first.prot) << "\t" << it->second.srcaddr <<" "<<it->second.dstaddr <<" "<<it->second.nexthop <<" "
-        <<it->second.input <<" "<<it->second.output <<" "<<it->second.dPkts<<" "<<it->second.dOctets<<" "
-        <<it->second.First<<" "<<it->second.Last<<" "<<it->second.srcport<<" "<<it->second.dstport<<" "
-        <<unsigned(it->second.pad1)<<" "<<unsigned(it->second.tcp_flags)<<" "<<unsigned(it->second.prot)<<" "<<unsigned(it->second.IP)<<" "
-        <<it->second.src_as<<" "<<it->second.dst_as<<" "<<unsigned(it->second.src_mask)<<" "<<unsigned(it->second.dst_mask)<<" "
-        <<it->second.pad2<<"\n";
+        cout <<it->second.srcaddr <<"\t"<<it->second.dstaddr <<"\t"<<it->second.nexthop <<"\t"<<it->second.input <<"\t"
+             <<it->second.output <<"\t"<<it->second.dPkts<<"\t"<<it->second.dOctets<<"\t"<<it->second.First<<"\t"
+             <<it->second.Last<<"\t"<<it->second.srcport<<" "<<it->second.dstport<<"\t"<<unsigned(it->second.pad1)<<"\t"
+             <<unsigned(it->second.tcp_flags)<<"\t"<<unsigned(it->second.prot)<<"\t"<<unsigned(it->second.IP)<<"\t"
+             <<it->second.src_as<<"\t"<<it->second.dst_as<<"\t"<<unsigned(it->second.src_mask)<<"\t"<<unsigned(it->second.dst_mask)<<"\t"
+             <<it->second.pad2<<"\n";
+        netflowMap.erase(it++);
     }
+}
+
+void check_timers(int atimer,int iatimer, uint32_t current){
+        //print_netflow();
+        for (auto it = netflowMap.cbegin(); it != netflowMap.cend(); ) {
+            if((it->second.Last - it->second.First) >= atimer){
+                printf("ACTIVE");
+                export_flow(it->first);
+                ////delete
+                netflowMap.erase(it++);
+            }else if((current - it->second.Last) >= iatimer){
+                printf("INACTIVE");
+                export_flow(it->first);
+                ////delete
+                netflowMap.erase(it++);
+            }else{
+                ++it;
+            }
+
+        }
+}
+
+void export_flow(Netflow_base netflow){
+
+    ////find
+    auto it = netflowMap.find(netflow);
+    ////print
+    cout <<it->second.srcaddr <<"\t"<<it->second.dstaddr <<"\t"<<it->second.nexthop <<"\t"<<it->second.input <<"\t"
+    <<it->second.output <<"\t"<<it->second.dPkts<<"\t"<<it->second.dOctets<<"\t"<<it->second.First<<"\t"
+    <<it->second.Last<<"\t"<<it->second.srcport<<" "<<it->second.dstport<<"\t"<<unsigned(it->second.pad1)<<"\t"
+    <<unsigned(it->second.tcp_flags)<<"\t"<<unsigned(it->second.prot)<<"\t"<<unsigned(it->second.IP)<<"\t"
+    <<it->second.src_as<<"\t"<<it->second.dst_as<<"\t"<<unsigned(it->second.src_mask)<<"\t"<<unsigned(it->second.dst_mask)<<"\t"
+    <<it->second.pad2<<"\n";
+
 }
