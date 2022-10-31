@@ -39,6 +39,7 @@ map<Netflow_base, Netflow> netflowMap;
 void export_all();
 void check_timers(int atimer, int iatimer, uint32_t current);
 void export_flow(Netflow_base netflow);
+void check_cache(uint32_t count);
 
 int main(int argc, char **argv) {
     char err_buf[PCAP_ERRBUF_SIZE]; //control buffer for pcap functions
@@ -163,6 +164,8 @@ int main(int argc, char **argv) {
             it->second.dPkts += 1;
             it->second.dOctets += netflow_data.dOctets;
         }else{
+            printf("CACHE?");
+            check_cache(options.count);
             netflow_data.srcaddr = netflow.srcaddr;
             netflow_data.dstaddr = netflow.dstaddr;
             netflow_data.dstport = netflow.dstport;
@@ -235,4 +238,22 @@ void export_flow(Netflow_base netflow){
     <<it->second.src_as<<"\t"<<it->second.dst_as<<"\t"<<unsigned(it->second.src_mask)<<"\t"<<unsigned(it->second.dst_mask)<<"\t"
     <<it->second.pad2<<"\n";
 
+}
+
+void check_cache(uint32_t count){
+    Netflow_base latest_key;
+    auto it_last = netflowMap.cbegin();
+    if(netflowMap.size() == count){
+        //printf("CACHE_____FULL");
+        for (auto it = netflowMap.cbegin(); it != netflowMap.cend(); it++) {
+            if (it->second.First <= it_last->second.First) {
+                latest_key = it->first;
+                it_last = it;
+            }
+        }
+        export_flow(latest_key);
+        ////delete
+        netflowMap.erase(it_last);
+    }
+    return;
 }

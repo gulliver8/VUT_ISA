@@ -24,7 +24,7 @@ using namespace std;
 struct Options{
     int a_timer;    //active timer value
     int i_timer;    //inactive timer value
-    int count;      //number of  flows in memory
+    uint32_t count;      //number of  flows in memory
     string hostname; //hostname and optional port
     string source;   //source file
 };
