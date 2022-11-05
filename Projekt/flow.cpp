@@ -42,12 +42,14 @@ void export_flow(Netflow_base netflow);
 void check_cache(uint32_t count);
 
 int main(int argc, char **argv) {
+
     char err_buf[PCAP_ERRBUF_SIZE]; //control buffer for pcap functions
     int input;
     int protocol;
 
     ////get program options
-    Options options = {60,10,1024,"127.0.0.1:2055","-"};
+    Options options = {60,10,1024,"127.0.0.1",NULL,2055,"-"};
+    inet_aton((options.hostname).c_str(),&options.ip);
     get_options(argc, argv, &options);
 
 
@@ -78,6 +80,8 @@ int main(int argc, char **argv) {
         //printf("Filter expression:%s applied successfully.",filter_exp);
     }
 
+    int sock = client(options);
+
     struct pcap_pkthdr packet_header; //contains packet timestamp and caplen -length of frame in bytes
     const u_char *packet;
 
@@ -85,11 +89,11 @@ int main(int argc, char **argv) {
     int i = 0;
     uint32_t boot_time;
     uint32_t current_time;
-
-
+    uint8_t t_flags;
     for(packet = pcap_next(session, &packet_header);packet != NULL; packet = pcap_next(session, &packet_header),i++){
         Netflow_base netflow = {};
         Netflow netflow_data = {};
+        t_flags = 0;
         ////Packet time values
         if(i == 0){
             boot_time =(packet_header.ts.tv_sec * 1000)+(packet_header.ts.tv_usec / 1000);
@@ -130,7 +134,7 @@ int main(int argc, char **argv) {
         }else{
             ////TODO: ipv6 packets suipport or not?
         }
-
+        client_send("|.",sock);
         ////TCP, UDP, ICMP support
         if (protocol != ICMP) {
             if (protocol == UDP) {
@@ -142,14 +146,14 @@ int main(int argc, char **argv) {
                 printf("Dst: %u\n", netflow.dstport);
                 //printf("src port: %hu\n", htons(udp_packet->uh_sport));
                 //printf("dst port: %hu\n", htons(udp_packet->uh_dport));
-            } else if (protocol == TCP) {
+            }else if (protocol == TCP) {
                 struct tcphdr *tcp_packet;
-
                 tcp_packet = (struct tcphdr *) packet;
                 netflow.srcport = htons(tcp_packet->th_sport);
                 printf("Src: %u", netflow.srcport);
                 netflow.dstport = htons(tcp_packet->th_dport);
                 printf("Dst: %u\n", netflow.dstport);
+                t_flags = tcp_packet->th_flags;
                 //printf("src port: %hu\n", htons(tcp_packet->th_sport));
                 //printf("dst port: %hu\n", htons(tcp_packet->th_dport));
             }
@@ -162,6 +166,7 @@ int main(int argc, char **argv) {
         if(it !=netflowMap.end()){
             it->second.Last = current_time;
             it->second.dPkts += 1;
+            it->second.tcp_flags = t_flags | it->second.tcp_flags;
             it->second.dOctets += netflow_data.dOctets;
         }else{
             printf("CACHE?");
@@ -171,6 +176,7 @@ int main(int argc, char **argv) {
             netflow_data.dstport = netflow.dstport;
             netflow_data.srcport = netflow.srcport;
             netflow_data.prot = netflow.prot;
+            netflow_data.tcp_flags = t_flags;
             netflow_data.First = current_time;
             netflow_data.Last = current_time;
             netflow_data.dPkts = 1;
@@ -179,6 +185,8 @@ int main(int argc, char **argv) {
         }
     }
     export_all();
+    close(sock);
+    printf("* Closing the client socket ...\n");
     pcap_close(session);
     //TODO:convert hostname to host
     //TODO: cummulative or of tcp flags

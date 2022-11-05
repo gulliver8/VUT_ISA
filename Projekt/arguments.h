@@ -16,19 +16,27 @@
 #define PROJEKT_ARGUMENTS_H
 #include <getopt.h>
 #include <cctype>
+#include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <unistd.h>
+#include <sstream>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
 #include <string>
+
 using namespace std;
 struct Options{
     int a_timer;    //active timer value
     int i_timer;    //inactive timer value
     uint32_t count;      //number of  flows in memory
     string hostname; //hostname and optional port
+    in_addr ip;
+    int port;
     string source;   //source file
 };
 
-void get_options(int argc, char *argv[],Options *);        //process command line arguments
-
+void get_options(int argc, char *argv[],Options *options);        //process command line arguments
+void get_hostname(Options *options);
 #endif //PROJEKT_ARGUMENTS_H

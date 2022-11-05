@@ -10,7 +10,7 @@
  *
  * @brief
  */
-#include<stdio.h>
+
 #include"arguments.h"
 
 void print_help(){
@@ -43,6 +43,7 @@ void get_options(int argc, char *argv[], Options *options) {
                 break;
             case 'c':
                 options->hostname.assign(optarg);
+                get_hostname(options);
                 break;
             case 'a':
                 options->a_timer = atoi(optarg);
@@ -68,7 +69,6 @@ void get_options(int argc, char *argv[], Options *options) {
             case '?':
                 fprintf(stderr, "invalid option: -%c\n", optopt);
                 exit(1);
-                break;
             case ':':
                 if (optopt != 'i') {
                     fprintf(stderr, "option -%c is missing a required argument\n", optopt);
@@ -78,4 +78,44 @@ void get_options(int argc, char *argv[], Options *options) {
                 break;
         }
     }
+}
+
+void get_hostname(Options *options){
+    string hostName = options->hostname;
+
+    size_t colonPos = hostName.find(':');
+
+    if(colonPos != string::npos)
+    {
+        hostName = hostName.substr(0,colonPos);
+        string portPart = hostName.substr(colonPos+1);
+
+        stringstream parser(portPart);
+
+        int port = 0;
+        if( parser >> port )
+        {
+            if(port >= 0 and port < 65536){
+                options->port = port;
+            }else{
+                //TODO error
+            }
+        }
+        else
+        {
+            //TODO errror- port not convertible to an integer
+        }
+    }
+    if(inet_aton((hostName).c_str(),&options->ip) == 0){        //convert to ip
+        // if address not in valid ip format
+        //make DNS resolution of the first parameter using gethostbyname()
+        struct hostent *servent;                        // network host entry required by gethostbyname()
+        if ((servent = gethostbyname(hostName.c_str())) == NULL) {
+            printf("gethostbyname() failed\n");         //invalid hostname
+            exit(1);
+        }
+        // copy the first parameter to the server.sin_addr structure
+        memcpy(&options->ip,servent->h_addr,servent->h_length);
+    }
+    // After processing port
 }

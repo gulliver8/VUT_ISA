@@ -15,6 +15,12 @@
 #define PROJEKT_NETFLOW_GENERATOR_H
 #include <time.h>
 #include <stdint.h>
+#include<sys/socket.h>
+#include <netdb.h>
+#include <cstring>
+#include "flow.h"
+
+#define BUFFER 1024     //buffer length
 
 struct Netflow_hdr{
     uint16_t version;            //NetFlow export format version number
@@ -63,7 +69,8 @@ struct Netflow_base{
         return false;
     }
 };
-
+int client(Options options);
+int client_send(char* buffer, int sock);
 
 
 #endif //PROJEKT_NETFLOW_GENERATOR_H
