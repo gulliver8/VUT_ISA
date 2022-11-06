@@ -34,7 +34,11 @@ struct Options{
     string hostname; //hostname and optional port
     in_addr ip;
     int port;
+    int sock;
     string source;   //source file
+    uint16_t secs;
+    uint16_t n_secs;
+    uint32_t flow_count;
 };
 
 void get_options(int argc, char *argv[],Options *options);        //process command line arguments

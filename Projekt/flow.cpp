@@ -36,10 +36,10 @@ tuple<uint32_t,uint32_t,uint16_t,uint16_t,uint8_t>netflow_base;
 
 map<Netflow_base, Netflow> netflowMap;
 
-void export_all();
-void check_timers(int atimer, int iatimer, uint32_t current);
-void export_flow(Netflow_base netflow);
-void check_cache(uint32_t count);
+void export_all(Options *options);
+void check_timers(uint32_t current, Options *options);
+void export_flow(Netflow_base netflow,Options *options);
+void check_cache(Options *options);
 
 int main(int argc, char **argv) {
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     int protocol;
 
     ////get program options
-    Options options = {60,10,1024,"127.0.0.1",NULL,2055,"-"};
+    Options options = {60,10,1024,"127.0.0.1",NULL,2055,0,"-", 0,0,0};
     inet_aton((options.hostname).c_str(),&options.ip);
     get_options(argc, argv, &options);
 
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
         //printf("Filter expression:%s applied successfully.",filter_exp);
     }
 
-    int sock = client(options);
+    options.sock = client(options);
 
     struct pcap_pkthdr packet_header; //contains packet timestamp and caplen -length of frame in bytes
     const u_char *packet;
@@ -95,8 +95,10 @@ int main(int argc, char **argv) {
         Netflow netflow_data = {};
         t_flags = 0;
         ////Packet time values
+        options.secs = packet_header.ts.tv_sec;
+        options.n_secs = packet_header.ts.tv_usec;
         if(i == 0){
-            boot_time =(packet_header.ts.tv_sec * 1000)+(packet_header.ts.tv_usec / 1000);
+            boot_time =(packet_header.ts.tv_sec * 1000)+(packet_header.ts.tv_usec / 1000); //sys_up_time
             printf("saved time %u", boot_time);
         }
         current_time = (packet_header.ts.tv_sec * 1000)+(packet_header.ts.tv_usec / 1000) - boot_time;
@@ -134,7 +136,6 @@ int main(int argc, char **argv) {
         }else{
             ////TODO: ipv6 packets suipport or not?
         }
-        client_send("|.",sock);
         ////TCP, UDP, ICMP support
         if (protocol != ICMP) {
             if (protocol == UDP) {
@@ -160,7 +161,7 @@ int main(int argc, char **argv) {
         }
 
         //printf("timers %i %i and %u",options.a_timer*1000,options.i_timer*1000, current_time);
-        check_timers(options.a_timer*1000,options.i_timer*1000, current_time);
+        check_timers(current_time, &options);
 
         auto it = netflowMap.find(netflow);
         if(it !=netflowMap.end()){
@@ -170,7 +171,7 @@ int main(int argc, char **argv) {
             it->second.dOctets += netflow_data.dOctets;
         }else{
             printf("CACHE?");
-            check_cache(options.count);
+            check_cache(&options);
             netflow_data.srcaddr = netflow.srcaddr;
             netflow_data.dstaddr = netflow.dstaddr;
             netflow_data.dstport = netflow.dstport;
@@ -184,8 +185,8 @@ int main(int argc, char **argv) {
             netflowMap[netflow] = netflow_data; //for the first
         }
     }
-    export_all();
-    close(sock);
+    export_all(&options);
+    close(options.sock);
     printf("* Closing the client socket ...\n");
     pcap_close(session);
     //TODO:convert hostname to host
@@ -200,31 +201,26 @@ int main(int argc, char **argv) {
 
 }
 
-void export_all(){
-    cout<<"SRC_ADDR\tDST_ADDR\tNEXTHOP\tIN\tOUT\tPKTS\tOCTETS\tFIRST\tLAST\tSRC_P\tDST_P\tPAD\tTCP\tPROT\tTOS\tSRC_AS\tDST_AS\tSRC_M\tDST_M\tPAD\n";
+void export_all(Options *options){
+    //cout<<"SRC_ADDR\tDST_ADDR\tNEXTHOP\tIN\tOUT\tPKTS\tOCTETS\tFIRST\tLAST\tSRC_P\tDST_P\tPAD\tTCP\tPROT\tTOS\tSRC_AS\tDST_AS\tSRC_M\tDST_M\tPAD\n";
     for(auto it = netflowMap.cbegin(); it != netflowMap.cend(); )
     {
-        cout <<it->second.srcaddr <<"\t"<<it->second.dstaddr <<"\t"<<it->second.nexthop <<"\t"<<it->second.input <<"\t"
-             <<it->second.output <<"\t"<<it->second.dPkts<<"\t"<<it->second.dOctets<<"\t"<<it->second.First<<"\t"
-             <<it->second.Last<<"\t"<<it->second.srcport<<" "<<it->second.dstport<<"\t"<<unsigned(it->second.pad1)<<"\t"
-             <<unsigned(it->second.tcp_flags)<<"\t"<<unsigned(it->second.prot)<<"\t"<<unsigned(it->second.IP)<<"\t"
-             <<it->second.src_as<<"\t"<<it->second.dst_as<<"\t"<<unsigned(it->second.src_mask)<<"\t"<<unsigned(it->second.dst_mask)<<"\t"
-             <<it->second.pad2<<"\n";
+        export_flow(it->first, options);
         netflowMap.erase(it++);
     }
 }
 
-void check_timers(int atimer,int iatimer, uint32_t current){
+void check_timers(uint32_t current, Options *options){
         //print_netflow();
         for (auto it = netflowMap.cbegin(); it != netflowMap.cend(); ) {
-            if((it->second.Last - it->second.First) >= atimer){
+            if((it->second.Last - it->second.First) >= options->a_timer*1000){
                 printf("ACTIVE");
-                export_flow(it->first);
+                export_flow(it->first,options);
                 ////delete
                 netflowMap.erase(it++);
-            }else if((current - it->second.Last) >= iatimer){
+            }else if((current - it->second.Last) >= options->i_timer*1000){
                 printf("INACTIVE");
-                export_flow(it->first);
+                export_flow(it->first,options);
                 ////delete
                 netflowMap.erase(it++);
             }else{
@@ -234,24 +230,39 @@ void check_timers(int atimer,int iatimer, uint32_t current){
         }
 }
 
-void export_flow(Netflow_base netflow){
+void export_flow(Netflow_base netflow,Options *options){
+    char buffer[BUFFER]="";
+    options->flow_count++;
 
     ////find
     auto it = netflowMap.find(netflow);
+    Netflow net = it->second;
+    Netflow_hdr header = {5,1,it->second.Last, options->secs, options->n_secs,options->flow_count,0,0,0};
+    memcpy(buffer,&header, sizeof(struct Netflow_hdr));
+    cout<<buffer;
+    memcpy(buffer+sizeof(struct Netflow_hdr)-1,&net, sizeof(struct Netflow));
+    //client_send(*buffer, options->sock);
+    int msg_size = sizeof(buffer);
+    printf("ms%d__%s",msg_size,buffer);
+    int i = send(options->sock,buffer,msg_size,0);     // send data to the server
+    if (i == -1)                   // check if data was sent correctly
+        printf("send() failed");
+    else if (i != msg_size)
+        printf("send(): buffer written partially");
     ////print
-    cout <<it->second.srcaddr <<"\t"<<it->second.dstaddr <<"\t"<<it->second.nexthop <<"\t"<<it->second.input <<"\t"
+    /*cout <<it->second.srcaddr <<"\t"<<it->second.dstaddr <<"\t"<<it->second.nexthop <<"\t"<<it->second.input <<"\t"
     <<it->second.output <<"\t"<<it->second.dPkts<<"\t"<<it->second.dOctets<<"\t"<<it->second.First<<"\t"
     <<it->second.Last<<"\t"<<it->second.srcport<<" "<<it->second.dstport<<"\t"<<unsigned(it->second.pad1)<<"\t"
     <<unsigned(it->second.tcp_flags)<<"\t"<<unsigned(it->second.prot)<<"\t"<<unsigned(it->second.IP)<<"\t"
     <<it->second.src_as<<"\t"<<it->second.dst_as<<"\t"<<unsigned(it->second.src_mask)<<"\t"<<unsigned(it->second.dst_mask)<<"\t"
     <<it->second.pad2<<"\n";
-
+*/
 }
 
-void check_cache(uint32_t count){
+void check_cache(Options *options){
     Netflow_base latest_key;
     auto it_last = netflowMap.cbegin();
-    if(netflowMap.size() == count){
+    if(netflowMap.size() == options->count){
         //printf("CACHE_____FULL");
         for (auto it = netflowMap.cbegin(); it != netflowMap.cend(); it++) {
             if (it->second.First <= it_last->second.First) {
@@ -259,7 +270,7 @@ void check_cache(uint32_t count){
                 it_last = it;
             }
         }
-        export_flow(latest_key);
+        export_flow(latest_key,options);
         ////delete
         netflowMap.erase(it_last);
     }

@@ -79,13 +79,12 @@
 
         // reading data until end-of-file (CTRL-D)
 
-        if (msg_size == -1)
-            printf("reading failed");
+
         return sock;
     }
-    int client_send(char* buffer, int sock){
-        int msg_size = sizeof(buffer);
-        int i = send(sock,buffer,msg_size,0);     // send data to the server
+    int client_send(char** buffer, int sock){
+        int msg_size = sizeof(&buffer);
+        int i = send(sock,&buffer,msg_size,0);     // send data to the server
         if (i == -1)                   // check if data was sent correctly
             printf("send() failed");
         else if (i != msg_size)

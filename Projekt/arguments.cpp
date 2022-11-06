@@ -87,8 +87,8 @@ void get_hostname(Options *options){
 
     if(colonPos != string::npos)
     {
-        hostName = hostName.substr(0,colonPos);
         string portPart = hostName.substr(colonPos+1);
+        hostName = hostName.substr(0,colonPos);
 
         stringstream parser(portPart);
 

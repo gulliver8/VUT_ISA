@@ -22,7 +22,7 @@
 #include <bitset>
 #include <csignal>
 #include <pcap.h>
-#include <string>
+
 
 //packet structure libraries
 #include <arpa/inet.h>
@@ -39,5 +39,6 @@
 #include "netflow_generator.h"
 //error macro
 #define FAILURE 1
+#define BUFFER 1024     //buffer length
 
 #endif //PROJEKT_FLOW_H

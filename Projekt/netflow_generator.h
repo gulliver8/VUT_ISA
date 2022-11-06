@@ -20,7 +20,6 @@
 #include <cstring>
 #include "flow.h"
 
-#define BUFFER 1024     //buffer length
 
 struct Netflow_hdr{
     uint16_t version;            //NetFlow export format version number
@@ -70,7 +69,7 @@ struct Netflow_base{
     }
 };
 int client(Options options);
-int client_send(char* buffer, int sock);
+int client_send(char** buffer, int sock);
 
 
 #endif //PROJEKT_NETFLOW_GENERATOR_H
