@@ -37,14 +37,14 @@ tuple<uint32_t,uint32_t,uint16_t,uint16_t,uint8_t>netflow_base;
 map<Netflow_base, Netflow> netflowMap;
 
 void export_all(Options *options);
-void check_timers(uint32_t current, Options *options);
+void check_timers(long int current, Options *options);
 void export_flow(Netflow_base netflow,Options *options);
 void check_cache(Options *options);
 
 int main(int argc, char **argv) {
 
     char err_buf[PCAP_ERRBUF_SIZE]; //control buffer for pcap functions
-    int input;
+    //int input;
     int protocol;
 
     ////get program options
@@ -87,8 +87,8 @@ int main(int argc, char **argv) {
 
     //packet time values
     int i = 0;
-    uint32_t boot_time;
-    uint32_t current_time;
+    long int boot_time;
+    long int current_time;
     uint8_t t_flags;
     for(packet = pcap_next(session, &packet_header);packet != NULL; packet = pcap_next(session, &packet_header),i++){
         Netflow_base netflow = {};
@@ -98,11 +98,13 @@ int main(int argc, char **argv) {
         options.secs = packet_header.ts.tv_sec;
         options.n_secs = packet_header.ts.tv_usec;
         if(i == 0){
-            boot_time =(packet_header.ts.tv_sec * 1000)+(packet_header.ts.tv_usec / 1000); //sys_up_time
-            printf("saved time %u", boot_time);
+
+            boot_time =((packet_header.ts.tv_sec * (uint32_t)1000)+(packet_header.ts.tv_usec / (uint32_t)1000)); //sys_up_time
+
         }
-        current_time = (packet_header.ts.tv_sec * 1000)+(packet_header.ts.tv_usec / 1000) - boot_time;
-        printf("Current %u  \n", current_time);
+
+        current_time = (packet_header.ts.tv_sec * (uint32_t)1000)+(packet_header.ts.tv_usec / (uint32_t)1000) - boot_time;
+        printf("Current %lu  \n", current_time);
 
         ////resolve IP or ICMP port
         ether_packet = (struct ether_header *) packet;
@@ -117,9 +119,6 @@ int main(int argc, char **argv) {
             netflow.dstaddr = *arp_packet->arp_tpa;
             printf("Dst: %u\n",netflow.srcaddr);
             netflow.prot = arp_packet->ea_hdr.ar_pro;
-            //printf("src IP: %d.%d.%d.%d\n", arp_packet->arp_spa[0], arp_packet->arp_spa[1], arp_packet->arp_spa[2],arp_packet->arp_spa[3]);
-            //printf("dst IP: %d.%d.%d.%d\n", arp_packet->arp_tpa[0], arp_packet->arp_tpa[1], arp_packet->arp_tpa[2],arp_packet->arp_tpa[3]);
-            printf("TAKETO");
         }else if(ntohs(ether_packet->ether_type) == IPV4){
             ipv4_packet = (struct ip *) packet;
             netflow.srcaddr = ipv4_packet->ip_src.s_addr;
@@ -130,7 +129,7 @@ int main(int argc, char **argv) {
             //printf("dst IP: %s\n", inet_ntoa(ipv4_packet->ip_dst));
             protocol = ipv4_packet->ip_p;
             netflow.prot = ipv4_packet->ip_p;
-            netflow_data.dOctets = ipv4_packet->ip_hl;
+            netflow_data.dOctets = ntohl(ipv4_packet->ip_hl);
             netflow_data.IP = ipv4_packet->ip_tos;
             packet = packet + 4 * ipv4_packet->ip_hl;
         }else{
@@ -141,32 +140,32 @@ int main(int argc, char **argv) {
             if (protocol == UDP) {
                 struct udphdr *udp_packet;
                 udp_packet = (struct udphdr *) packet;
-                netflow.srcport = htons(udp_packet->source);
-                printf("Src: %u", netflow.srcport);
-                netflow.dstport = htons(udp_packet->dest);
-                printf("Dst: %u\n", netflow.dstport);
+                netflow.srcport = udp_packet->source;
+                //printf("Src: %u", netflow.srcport);
+                netflow.dstport = udp_packet->dest;
+                //printf("Dst: %u\n", netflow.dstport);
                 //printf("src port: %hu\n", htons(udp_packet->uh_sport));
                 //printf("dst port: %hu\n", htons(udp_packet->uh_dport));
             }else if (protocol == TCP) {
                 struct tcphdr *tcp_packet;
                 tcp_packet = (struct tcphdr *) packet;
-                netflow.srcport = htons(tcp_packet->th_sport);
-                printf("Src: %u", netflow.srcport);
-                netflow.dstport = htons(tcp_packet->th_dport);
-                printf("Dst: %u\n", netflow.dstport);
+                netflow.srcport = tcp_packet->th_sport;
+                //printf("Src: %u", netflow.srcport);
+                netflow.dstport = tcp_packet->th_dport;
+                //printf("Dst: %u\n", netflow.dstport);
                 t_flags = tcp_packet->th_flags;
                 //printf("src port: %hu\n", htons(tcp_packet->th_sport));
                 //printf("dst port: %hu\n", htons(tcp_packet->th_dport));
             }
         }
-
+        //printf("JOOJ%u", current_time);
         //printf("timers %i %i and %u",options.a_timer*1000,options.i_timer*1000, current_time);
         check_timers(current_time, &options);
 
         auto it = netflowMap.find(netflow);
         if(it !=netflowMap.end()){
-            it->second.Last = current_time;
-            it->second.dPkts += 1;
+            it->second.Last = htonl(current_time);
+            it->second.dPkts += htonl(1);
             it->second.tcp_flags = t_flags | it->second.tcp_flags;
             it->second.dOctets += netflow_data.dOctets;
         }else{
@@ -178,9 +177,9 @@ int main(int argc, char **argv) {
             netflow_data.srcport = netflow.srcport;
             netflow_data.prot = netflow.prot;
             netflow_data.tcp_flags = t_flags;
-            netflow_data.First = current_time;
-            netflow_data.Last = current_time;
-            netflow_data.dPkts = 1;
+            netflow_data.First = htonl(current_time);
+            netflow_data.Last = htonl(current_time);
+            netflow_data.dPkts = htonl(1);
 
             netflowMap[netflow] = netflow_data; //for the first
         }
@@ -210,16 +209,17 @@ void export_all(Options *options){
     }
 }
 
-void check_timers(uint32_t current, Options *options){
+void check_timers(long int current, Options *options){
         //print_netflow();
         for (auto it = netflowMap.cbegin(); it != netflowMap.cend(); ) {
-            if((it->second.Last - it->second.First) >= options->a_timer*1000){
+            if((ntohl(it->second.Last) - ntohl(it->second.First)) >= options->a_timer*1000){
                 printf("ACTIVE");
                 export_flow(it->first,options);
                 ////delete
                 netflowMap.erase(it++);
-            }else if((current - it->second.Last) >= options->i_timer*1000){
+            }else if((current - ntohl(it->second.Last)) >= options->i_timer*1000){
                 printf("INACTIVE");
+                printf("current: %lu last: %u result: %lu timer: %u ",current,ntohl(it->second.Last),(current - ntohl(it->second.Last)),options->i_timer);
                 export_flow(it->first,options);
                 ////delete
                 netflowMap.erase(it++);
@@ -237,10 +237,9 @@ void export_flow(Netflow_base netflow,Options *options){
     ////find
     auto it = netflowMap.find(netflow);
     Netflow net = it->second;
-    Netflow_hdr header = {5,1,it->second.Last, options->secs, options->n_secs,options->flow_count,0,0,0};
+    Netflow_hdr header = {htons(5),htons(1),it->second.Last, htonl(options->secs), htonl(options->n_secs),options->flow_count};
     memcpy(buffer,&header, sizeof(struct Netflow_hdr));
-    cout<<buffer;
-    memcpy(buffer+sizeof(struct Netflow_hdr)-1,&net, sizeof(struct Netflow));
+    memcpy(buffer+sizeof(struct Netflow_hdr),&net, sizeof(struct Netflow));
     //client_send(*buffer, options->sock);
     int msg_size = sizeof(buffer);
     printf("ms%d__%s",msg_size,buffer);

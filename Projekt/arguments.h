@@ -25,19 +25,21 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string>
+#include <netinet/in.h>
+#include<sys/socket.h>
 
 using namespace std;
 struct Options{
-    int a_timer;    //active timer value
-    int i_timer;    //inactive timer value
+    uint32_t a_timer;    //active timer value
+    uint32_t i_timer;    //inactive timer value
     uint32_t count;      //number of  flows in memory
     string hostname; //hostname and optional port
     in_addr ip;
     int port;
     int sock;
     string source;   //source file
-    uint16_t secs;
-    uint16_t n_secs;
+    uint32_t secs;
+    uint32_t n_secs;
     uint32_t flow_count;
 };
 
