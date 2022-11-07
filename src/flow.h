@@ -16,7 +16,7 @@
 
 #include <pcap.h>
 #include <map>
-
+#define __FAVOR_BSD
 //packet structure libraries
 #include <arpa/inet.h>
 #include <netinet/ether.h>
