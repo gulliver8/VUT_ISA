@@ -13,7 +13,6 @@
 
 
 #include "flow.h"
-
 #include <iostream>
 
 struct ether_header *ether_packet;
@@ -118,9 +117,9 @@ int main(int argc, char **argv) {
             if (protocol == UDP) {
                 struct udphdr *udp_packet;
                 udp_packet = (struct udphdr *) packet;
-                netflow.srcport = udp_packet->source;
+                netflow.srcport = udp_packet->uh_sport;
                 //printf("Src: %u", netflow.srcport);
-                netflow.dstport = udp_packet->dest;
+                netflow.dstport = udp_packet->uh_dport;
                 //printf("Dst: %u\n", netflow.dstport);
                 //printf("src port: %hu\n", htons(udp_packet->uh_sport));
                 //printf("dst port: %hu\n", htons(udp_packet->uh_dport));
