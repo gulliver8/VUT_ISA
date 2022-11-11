@@ -13,7 +13,6 @@
 
 
 #include "flow.h"
-#include <iostream>
 
 struct ether_header *ether_packet;
 struct ip *ipv4_packet;
