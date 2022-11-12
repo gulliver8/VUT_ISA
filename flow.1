@@ -1,0 +1,34 @@
+.TH FLOW 1
+.SH NAME
+flow \- export NetFlow records from the captured network data in pcap format
+.SH SYNOPSIS
+.B flow
+[\fB\-f\fR \fIFILE\fR]
+[\fB\-c\fR \fINETFLOW_COLLECTOR[:PORT]\fR]
+[\fB\-a\fR \fIACTIVE_TIMER\fR]
+[\fB\-i\fR \fISECONDS\fR]
+[\fB\-m\fR \fICOUNT\fR]
+
+.SH DESCRIPTION
+.B flow
+creates NetFlow records from the captured network data in pcap format, which it sends to the netflow collector through an udp client.
+.SH OPTIONS
+.TP
+.BR \-f  =\fIFILE\fR
+Set name of the analysed file. 
+Default is STDIN.
+.TP
+.BR \-c  =\fINETFLOW_COLLECTOR[:PORT]\fR
+Set IP address, or hostname and port of the NetFlow collector.
+Default is 127.0.1:2055.
+.TP
+.BR \-a  =\fIACTIVE_TIMER\fR
+Set interval in seconds, after which the active flows are exported.
+Default is 60.
+.TP
+.BR \-i  =\fISECONDS\fR
+Set interval in seconds, after which the inactive flows are exported.
+Default is 10.
+.TP
+.BR \-m  =\fICOUNT\fR
+Set flow-cache size. Default is 1024.
